@@ -13,24 +13,33 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+env:
+  JVM_ARGS: '-Xms4g -Xmx8g'
+  JUNIT: 'True'
+
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
+  PerfTest_Server_Side:
+    runs-on: self-hosted
+    timeout-minutes: 1000
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v2
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
-
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: Backend PerfTest
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          mkdir reports
+          docker run --rm -u=root -v ${{ github.workspace }}/reports:/tmp/reports  -v ${{ github.workspace }}/tests:/mnt/jmeter/ -e JVM_ARGS='${{ env.JVM_ARGS }}' -e junit_report="${{ env.JUNIT }}" getcarrier/perfmeter:standalone -n -t /mnt/jmeter/TestPlan.jmx  
+          ls -la reports
+          sudo chmod -R 777 ${{ github.workspace }}
+
+      - name: Publish Test Results
+        uses: mikepenz/action-junit-report@v2
+        with:
+          report_paths: 'reports/jmeter.xml'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: jmeter
+          path: reports
