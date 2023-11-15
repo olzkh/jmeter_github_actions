@@ -1,1 +1,1 @@
-# jmeter_github_actoins
+# jmeter_github_actions

@@ -1,0 +1,45 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  JVM_ARGS: '-Xms4g -Xmx8g'
+  JUNIT: 'True'
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  PerfTest_Server_Side:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Backend PerfTest
+        run: |
+          mkdir reports
+          docker run --rm -u=root -v ${{ github.workspace }}/reports:/tmp/reports  -v ${{ github.workspace }}/tests:/mnt/jmeter/ -e JVM_ARGS='${{ env.JVM_ARGS }}' -e junit_report="${{ env.JUNIT }}" getcarrier/perfmeter:standalone -n -t /mnt/jmeter/TestPlan.jmx  
+          ls -la reports
+          sudo chmod -R 777 ${{ github.workspace }}
+
+      - name: Publish Test Results
+        uses: mikepenz/action-junit-report@v3
+        with:
+          report_paths: 'reports/jmeter.xml'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: jmeter
+          path: reports
